@@ -1,0 +1,25 @@
+.navbar {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1rem;
+  background: #f5f6fa;
+  border-bottom: 1px solid #e1e1e1;
+  margin-bottom: 2rem;
+  justify-content: center;
+}
+
+.navbar-link {
+  color: #222;
+  text-decoration: none;
+  font-size: 18px;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.navbar-link.active {
+  color: #0053ba;
+  font-weight: bold;
+  text-decoration: underline;
+  background: #e6f0ff;
+}
