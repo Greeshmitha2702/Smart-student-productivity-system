@@ -31,7 +31,11 @@ export async function createTask(task: { title: string; completed?: boolean; dat
   try {
     const headers = await authHeaders();
     const response = await API.post('Api', `/tasks?userId=${userId}`, { body: task, headers });
-    return response.task;
+    if (response?.task) return response.task;
+    if (Array.isArray(response?.tasks) && response.tasks.length > 0) {
+      return response.tasks[response.tasks.length - 1];
+    }
+    throw new Error(`Unexpected createTask response: ${JSON.stringify(response)}`);
   } catch (err: any) {
     console.error('createTask error', err);
     throw err;

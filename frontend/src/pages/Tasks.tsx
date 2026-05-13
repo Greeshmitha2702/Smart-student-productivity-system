@@ -27,6 +27,7 @@ export default function Tasks() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [searchQ, setSearchQ] = useState('');
 
   const loadTasks = async (filters?: { q?: string }) => {
@@ -45,13 +46,24 @@ export default function Tasks() {
   }, []);
 
   const handleAdd = async () => {
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      setMessage(null);
+      setError('Task title is required.');
+      return;
+    }
+    setError(null);
+    setMessage(null);
     setBusy(true);
     try {
-      await createTask({ title, completed: false, date: date || undefined, time: time || undefined, productiveHours: productiveHours === '' ? 0 : productiveHours as number, priority });
+      const created = await createTask({ title, completed: false, date: date || undefined, time: time || undefined, productiveHours: productiveHours === '' ? 0 : productiveHours as number, priority });
+      if (!created) {
+        throw new Error('Task was not created by API.');
+      }
       setTitle(''); setDate(''); setTime(''); setProductiveHours(''); setPriority('medium');
-      loadTasks();
+      await loadTasks();
+      setMessage('Task added successfully.');
     } catch (err: any) {
+      setMessage(null);
       setError(err.message || String(err));
     } finally {
       setBusy(false);
@@ -127,6 +139,7 @@ export default function Tasks() {
       <div style={{ marginBottom: 8, color: '#444' }}>
         Tasks are generic to-dos: quick capture, priority, and completion tracking.
       </div>
+      {message && <div style={{ color: '#067647', marginBottom: 8 }}>{message}</div>}
       {error && <div style={{ color: 'red' }}>{error}</div>}
 
       <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
@@ -145,7 +158,7 @@ export default function Tasks() {
           <option value="medium">Medium</option>
           <option value="high">High</option>
         </select>
-        <button disabled={busy} onClick={handleAdd}>Add</button>
+        <button disabled={busy} type="button" onClick={handleAdd}>Add</button>
       </div>
 
       {loading ? <div>Loading...</div> : (

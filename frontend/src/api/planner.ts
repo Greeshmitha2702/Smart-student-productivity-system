@@ -32,7 +32,11 @@ export async function createPlan(plan: { activity: string; time?: string; endTim
   try {
     const headers = await authHeaders();
     const response = await API.post('Api', `/planner?userId=${userId}`, { body: plan, headers });
-    return response.plan;
+    if (response?.plan) return response.plan;
+    if (Array.isArray(response?.plans) && response.plans.length > 0) {
+      return response.plans[response.plans.length - 1];
+    }
+    throw new Error(`Unexpected createPlan response: ${JSON.stringify(response)}`);
   } catch (err: any) {
     console.error('createPlan error', err);
     throw err;

@@ -30,6 +30,7 @@ export default function Planner() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   const loadPlans = async (filters?: { q?: string }) => {
     setLoading(true);
@@ -45,17 +46,31 @@ export default function Planner() {
   useEffect(() => { loadPlans(); }, []);
 
   const addPlan = async () => {
-    if (!activity.trim()) return;
+    if (!activity.trim()) {
+      setMessage(null);
+      setError('Activity is required.');
+      return;
+    }
     if (!date || !time) {
+      setMessage(null);
       setError('Planner requires date and start time for scheduled sessions.');
       return;
     }
+    setError(null);
+    setMessage(null);
     setBusy(true);
     try {
-      await createPlan({ activity, time: time || undefined, endTime: endTime || undefined, date: date || undefined, productiveHours: productiveHours === '' ? 0 : productiveHours as number, recurrence });
+      const created = await createPlan({ activity, time: time || undefined, endTime: endTime || undefined, date: date || undefined, productiveHours: productiveHours === '' ? 0 : productiveHours as number, recurrence });
+      if (!created) {
+        throw new Error('Plan was not created by API.');
+      }
       setTime(''); setEndTime(''); setActivity(''); setDate(''); setProductiveHours(''); setRecurrence('none');
-      loadPlans();
-    } catch (err: any) { setError(err.message || String(err)); }
+      await loadPlans();
+      setMessage('Plan added successfully.');
+    } catch (err: any) {
+      setMessage(null);
+      setError(err.message || String(err));
+    }
     finally { setBusy(false); }
   };
 
@@ -105,6 +120,8 @@ export default function Planner() {
       <div style={{ marginBottom: 8, color: '#444' }}>
         Planner is schedule-focused: create calendar-like sessions with date, start/end time, and recurrence. Use Tasks for generic to-dos.
       </div>
+      {message && <div style={{ color: '#067647', marginBottom: 8 }}>{message}</div>}
+      {error && <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>}
 
       <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <input disabled={busy} placeholder="Search planner..." value={searchQ} onChange={e => setSearchQ(e.target.value)} style={{ flex: 1, padding: 8 }} />
@@ -123,7 +140,7 @@ export default function Planner() {
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
         </select>
-        <button disabled={busy} onClick={addPlan}>Add</button>
+        <button disabled={busy} type="button" onClick={addPlan}>Add</button>
       </div>
 
       {loading ? <div>Loading...</div> : (

@@ -75,7 +75,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   // Handle listing with optional filters for both resources
-  if (resource === '/planner' || resource === '/tasks') {
+  if (event.httpMethod === 'GET' && (resource === '/planner' || resource === '/tasks')) {
     const q = event.queryStringParameters?.q;
     const startDate = event.queryStringParameters?.startDate;
     const endDate = event.queryStringParameters?.endDate;
