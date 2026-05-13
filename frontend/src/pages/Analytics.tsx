@@ -9,24 +9,23 @@ type Stats = {
   streak: number;
 };
 
+type TrendPoint = {
+  day: string;
+  hours: number;
+};
+
 export default function Analytics() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAnalytics()
       .then((data) => {
-        // Example: data.tasks = [{ completed: true, ... }, ...]
-        const tasks = data.tasks || [];
-        const completedTasks = tasks.filter((t: any) => t.completed).length;
-        // For demo, plannedActivities = total tasks, productiveHours = completedTasks * 0.5, streak = random
-        setStats({
-          completedTasks,
-          plannedActivities: tasks.length,
-          productiveHours: Math.round(completedTasks * 0.5),
-          streak: Math.floor(Math.random() * 10) + 1,
-        });
+        const stats = data.stats || null;
+        if (stats) setStats(stats as Stats);
+        setTrend((data.trend || []) as TrendPoint[]);
         setLoading(false);
       })
       .catch((err) => {
@@ -50,9 +49,19 @@ export default function Analytics() {
             <StatCard label="Streak (days)" value={stats.streak} />
           </div>
           <h3>Productivity Trend</h3>
-          <div style={{ margin: '2rem auto', width: 400, height: 200, background: '#f5f6fa', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: 24 }}>
-            {/* Placeholder for chart */}
-            <span role="img" aria-label="chart">📈</span> <span style={{ marginLeft: 12 }}>Chart coming soon</span>
+          <div style={{ margin: '1rem auto', width: '100%', maxWidth: 760, border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
+            {trend.length === 0 ? (
+              <div style={{ color: '#777' }}>No activity trend yet.</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${trend.length}, minmax(28px, 1fr))`, alignItems: 'end', gap: 6, height: 180 }}>
+                {trend.map((p) => (
+                  <div key={p.day} title={`${p.day}: ${p.hours}h`} style={{ display: 'grid', gap: 4, justifyItems: 'center' }}>
+                    <div style={{ width: '100%', background: '#3b82f6', borderRadius: 4, minHeight: 4, height: `${Math.max(4, p.hours * 22)}px` }} />
+                    <div style={{ fontSize: 10, color: '#666' }}>{p.day.slice(5)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}

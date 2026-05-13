@@ -1,25 +1,38 @@
 import React, { useEffect, useState } from 'react';
 import { fetchTasks, createTask, updateTask, deleteTask } from '../api/tasks';
+import { createPlan } from '../api/planner';
+
+type TaskPriority = 'low' | 'medium' | 'high';
 
 type Task = {
-  userId: string;
+    userId?: string;
   taskId: string;
   title: string;
-  completed: boolean;
+  completed?: boolean;
+  date?: string; // ISO date
+  time?: string;
+  productiveHours?: number;
+  priority?: TaskPriority;
 };
 
 export default function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [input, setInput] = useState('');
-  const [editing, setEditing] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
+  const [title, setTitle] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [productiveHours, setProductiveHours] = useState<number | ''>('');
+  const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingValues, setEditingValues] = useState<Partial<Task>>({});
   const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQ, setSearchQ] = useState('');
 
-  const loadTasks = async () => {
+  const loadTasks = async (filters?: { q?: string }) => {
     setLoading(true);
     try {
-      const data = await fetchTasks();
+      const data = await fetchTasks(filters);
       setTasks(data);
     } catch (err: any) {
       setError(err.message || String(err));
@@ -32,91 +45,137 @@ export default function Tasks() {
   }, []);
 
   const handleAdd = async () => {
-    if (!input.trim()) return;
-    const newTask = { title: input, completed: false };
+    if (!title.trim()) return;
+    setBusy(true);
     try {
-      await createTask(newTask);
-      setInput('');
+      await createTask({ title, completed: false, date: date || undefined, time: time || undefined, productiveHours: productiveHours === '' ? 0 : productiveHours as number, priority });
+      setTitle(''); setDate(''); setTime(''); setProductiveHours(''); setPriority('medium');
       loadTasks();
     } catch (err: any) {
       setError(err.message || String(err));
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleToggle = async (task: Task) => {
+    setBusy(true);
     try {
-      await updateTask({ ...task, completed: !task.completed });
-      loadTasks();
+      await updateTask({ taskId: task.taskId, completed: !task.completed });
+      loadTasks({ q: searchQ });
     } catch (err: any) {
       setError(err.message || String(err));
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleDelete = async (taskId: string) => {
+    if (!window.confirm('Delete this task?')) return;
+    setBusy(true);
     try {
       await deleteTask(taskId);
-      loadTasks();
+      loadTasks({ q: searchQ });
     } catch (err: any) {
       setError(err.message || String(err));
+    } finally {
+      setBusy(false);
     }
   };
 
-  const handleEdit = (task: Task) => {
-    setEditing(task.taskId);
-    setEditValue(task.title);
-  };
-
-  const handleEditSave = async (task: Task) => {
+  const handlePromote = async (task: Task) => {
+    if (!window.confirm(`Schedule "${task.title}"?`)) return;
+    setBusy(true);
     try {
-      await updateTask({ ...task, title: editValue });
-      setEditing(null);
-      setEditValue('');
-      loadTasks();
+      await createPlan({ activity: task.title, date: task.date, time: task.time, productiveHours: task.productiveHours });
+      await deleteTask(task.taskId);
+      loadTasks({ q: searchQ });
     } catch (err: any) {
       setError(err.message || String(err));
+    } finally {
+      setBusy(false);
     }
+  };
+
+  const startEdit = (task: Task) => {
+    setEditingId(task.taskId);
+    setEditingValues({ title: task.title, date: task.date, time: task.time, productiveHours: task.productiveHours, priority: task.priority });
+  };
+
+  const saveEdit = async (taskId: string) => {
+    setBusy(true);
+    try {
+      await updateTask({ taskId, title: editingValues.title, date: editingValues.date, time: editingValues.time, productiveHours: editingValues.productiveHours, priority: editingValues.priority as TaskPriority | undefined });
+      setEditingId(null);
+      setEditingValues({});
+      loadTasks({ q: searchQ });
+    } catch (err: any) {
+      setError(err.message || String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    loadTasks(searchQ ? { q: searchQ } : undefined);
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: '2rem auto' }}>
+    <div style={{ maxWidth: 720, margin: '2rem auto' }}>
       <h2>Tasks</h2>
-      {error && <div style={{ color: 'red' }}>{error}</div>}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder="Add a new task"
-          style={{ flex: 1, padding: 8 }}
-        />
-        <button onClick={handleAdd} style={{ padding: '8px 16px' }}>Add</button>
+      <div style={{ marginBottom: 8, color: '#444' }}>
+        Tasks are generic to-dos: quick capture, priority, and completion tracking.
       </div>
-      {loading ? (
-        <div>Loading...</div>
-      ) : (
+      {error && <div style={{ color: 'red' }}>{error}</div>}
+
+      <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <input disabled={busy} placeholder="Search tasks..." value={searchQ} onChange={e => setSearchQ(e.target.value)} style={{ flex: 1, padding: 8 }} />
+        <button disabled={busy} type="submit">Search</button>
+        <button disabled={busy} type="button" onClick={() => { setSearchQ(''); loadTasks(); }}>Clear</button>
+      </form>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 120px 120px 80px', gap: 8, marginBottom: 16 }}>
+        <input disabled={busy} value={title} onChange={e => setTitle(e.target.value)} placeholder="Task title" />
+        <input disabled={busy} type="date" value={date} onChange={e => setDate(e.target.value)} />
+        <input disabled={busy} type="time" value={time} onChange={e => setTime(e.target.value)} />
+        <input disabled={busy} type="number" min={0} step={0.25} value={productiveHours === '' ? '' : String(productiveHours)} onChange={e => setProductiveHours(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Hours" />
+        <select disabled={busy} value={priority} onChange={e => setPriority(e.target.value as TaskPriority)}>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+        <button disabled={busy} onClick={handleAdd}>Add</button>
+      </div>
+
+      {loading ? <div>Loading...</div> : (
         <ul style={{ listStyle: 'none', padding: 0 }}>
           {tasks.map(task => (
-            <li key={task.taskId} style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-              <input
-                type="checkbox"
-                checked={task.completed}
-                onChange={() => handleToggle(task)}
-                style={{ marginRight: 8 }}
-              />
-              {editing === task.taskId ? (
+            <li key={task.taskId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8, borderBottom: '1px solid #eee' }}>
+              <input disabled={busy} type="checkbox" checked={!!task.completed} onChange={() => handleToggle(task)} />
+              {editingId === task.taskId ? (
                 <>
-                  <input
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value)}
-                    style={{ flex: 1, marginRight: 8 }}
-                  />
-                  <button onClick={() => handleEditSave(task)} style={{ marginRight: 8 }}>Save</button>
-                  <button onClick={() => setEditing(null)}>Cancel</button>
+                  <input disabled={busy} style={{ flex: 1 }} value={editingValues.title || ''} onChange={e => setEditingValues(v => ({ ...v, title: e.target.value }))} />
+                  <input disabled={busy} type="date" value={editingValues.date || ''} onChange={e => setEditingValues(v => ({ ...v, date: e.target.value }))} />
+                  <input disabled={busy} type="time" value={editingValues.time || ''} onChange={e => setEditingValues(v => ({ ...v, time: e.target.value }))} />
+                  <input disabled={busy} type="number" min={0} step={0.25} value={editingValues.productiveHours === undefined ? '' : String(editingValues.productiveHours)} onChange={e => setEditingValues(v => ({ ...v, productiveHours: e.target.value === '' ? undefined : Number(e.target.value) }))} style={{ width: 80 }} />
+                  <select disabled={busy} value={(editingValues.priority as TaskPriority | undefined) || 'medium'} onChange={e => setEditingValues(v => ({ ...v, priority: e.target.value as TaskPriority }))}>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                  <button disabled={busy} onClick={() => saveEdit(task.taskId)}>Save</button>
+                  <button disabled={busy} onClick={() => setEditingId(null)}>Cancel</button>
                 </>
               ) : (
                 <>
-                  <span style={{ flex: 1, textDecoration: task.completed ? 'line-through' : 'none' }}>{task.title}</span>
-                  <button onClick={() => handleEdit(task)} style={{ marginLeft: 8 }}>Edit</button>
-                  <button onClick={() => handleDelete(task.taskId)} style={{ marginLeft: 8 }}>Delete</button>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600 }}>{task.title}</div>
+                    <div style={{ fontSize: 12, color: '#666' }}>{task.date || ''} {task.time ? `· ${task.time}` : ''} {task.productiveHours ? `· ${task.productiveHours}h` : ''} {task.priority ? `· ${task.priority} priority` : ''}</div>
+                  </div>
+                  <button disabled={busy} onClick={() => startEdit(task)}>Edit</button>
+                  <button disabled={busy} onClick={() => handleDelete(task.taskId)}>Delete</button>
+                  <button disabled={busy} onClick={() => handlePromote(task)}>Schedule</button>
                 </>
               )}
             </li>
