@@ -1,7 +1,4 @@
 import { PreSignUpTriggerEvent } from 'aws-lambda';
-import { SES } from 'aws-sdk';
-
-const ses = new SES({ region: 'us-east-1' });
 
 export const handler = async (event: PreSignUpTriggerEvent) => {
   const userEmail = event.request.userAttributes.email;
@@ -16,17 +13,6 @@ export const handler = async (event: PreSignUpTriggerEvent) => {
   // Apply Cognito auto-confirm / auto-verify according to env toggles
   event.response.autoConfirmUser = !!autoConfirm;
   event.response.autoVerifyEmail = !!autoVerify;
-
-  // Verify email with SES for sending reminders (sandbox requirement)
-  if (userEmail) {
-    try {
-      await ses.verifyEmailIdentity({ EmailAddress: userEmail }).promise();
-      console.log(`SES verification initiated for ${userEmail}`);
-    } catch (err) {
-      console.error(`Failed to verify email with SES: ${userEmail}`, err);
-      // Don't fail the sign-up if SES verification fails
-    }
-  }
 
   return event;
 };

@@ -10,6 +10,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
   const [resetCode, setResetCode] = useState('');
   const [resetPassword, setResetPassword] = useState('');
   const [resetConfirmPassword, setResetConfirmPassword] = useState('');
@@ -45,13 +46,13 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
           password,
           attributes: { email: email.trim() }
         });
-        // After sign-up, do not auto sign-in. Show verification instructions page.
+        // After sign-up, do not auto sign-in. Show code verification page.
         setMode('verify');
         setPassword('');
         return;
       }
 
-        const signInResult = await Auth.signIn(email.trim(), password);
+        await Auth.signIn(email.trim(), password);
         // After sign-in, check whether the user's email is verified. If not, prevent access.
         try {
           const current = await Auth.currentAuthenticatedUser();
@@ -59,7 +60,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
           if (!verified) {
             await Auth.signOut();
             setMode('verify');
-            setError('Please verify your email address. We sent a link to your inbox.');
+            setError('Please verify your email address with the code we sent you.');
             return;
           }
         } catch (checkErr) {
@@ -85,6 +86,16 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
         startNotificationService();
       } catch {}
     } catch (err: any) {
+      const errorName = err?.code || err?.name || '';
+      const errorMessage = String(err?.message || err || '').toLowerCase();
+
+      if (mode === 'signIn' && (errorName === 'UserNotConfirmedException' || errorMessage.includes('user is not confirmed') || errorMessage.includes('not confirmed'))) {
+        setMode('verify');
+        setPassword('');
+        setError('Your account is not verified yet. Enter the code we sent to your email.');
+        return;
+      }
+
       setError(err?.message || String(err));
     }
   };
@@ -95,6 +106,24 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       if (!email.trim()) return setError('Enter the email used to sign up to resend verification.');
       await Auth.resendSignUp(email.trim());
       setError('Verification email resent. Please check your inbox.');
+    } catch (err: any) {
+      setError(err?.message || String(err));
+    }
+  };
+
+  const handleConfirmVerification = async () => {
+    setError(null);
+    if (!email.trim() || !verificationCode.trim()) {
+      setError('Enter the email used to sign up and the verification code.');
+      return;
+    }
+
+    try {
+      await Auth.confirmSignUp(email.trim(), verificationCode.trim());
+      setMode('signIn');
+      setVerificationCode('');
+      setPassword('');
+      setError('Email verified successfully. You can now log in.');
     } catch (err: any) {
       setError(err?.message || String(err));
     }
@@ -168,10 +197,18 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
         {mode === 'verify' ? (
           <div style={{ display: 'grid', gap: 12, textAlign: 'center' }}>
             <p style={{ marginTop: 0, fontWeight: 600 }}>Thank you for signing up</p>
-            <p>We sent a verification link to your inbox. Please check your email and click the verification link to activate your account.</p>
-            <p>If you don't see the email, check your spam folder or click resend below.</p>
+            <p>We sent a verification code to your inbox. Enter that code here to activate your account.</p>
+            <p>If you don't see the code, check your spam folder or click resend below.</p>
+            <input
+              type="text"
+              value={verificationCode}
+              onChange={e => setVerificationCode(e.target.value)}
+              placeholder="Verification code"
+              style={{ padding: '0.75rem 1rem' }}
+            />
             {error && <div style={{ color: '#b42318' }}>{error}</div>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8 }}>
+              <button type="button" onClick={handleConfirmVerification} style={{ padding: '0.75rem 1rem' }}>Verify code</button>
               <button type="button" onClick={() => setMode('signIn')} style={{ padding: '0.75rem 1rem' }}>Back to login</button>
               <button type="button" onClick={handleResendVerification} style={{ padding: '0.75rem 1rem', background: 'transparent', border: '1px solid #d0d7de' }}>Resend verification</button>
             </div>
@@ -257,6 +294,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
                 onClick={() => {
                   setError(null);
                   setMode(mode === 'signIn' ? 'signUp' : 'signIn');
+                  if (mode === 'signIn') setVerificationCode('');
                 }}
                 style={{ padding: '0.75rem 1rem', background: 'transparent', border: '1px solid #d0d7de' }}
               >
