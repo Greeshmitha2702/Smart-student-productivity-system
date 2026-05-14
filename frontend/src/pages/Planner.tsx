@@ -18,6 +18,7 @@ type PlanItem = {
 };
 
 export default function Planner() {
+  const browserTimezoneOffsetMinutes = new Date().getTimezoneOffset();
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [time, setTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -62,7 +63,7 @@ export default function Planner() {
     setMessage(null);
     setBusy(true);
     try {
-      const created = await createPlan({ activity, time: time || undefined, endTime: endTime || undefined, date: date || undefined, productiveHours: productiveHours === '' ? 0 : productiveHours as number, recurrence, reminderMinutes: reminderMinutes === '' ? undefined : Number(reminderMinutes) });
+      const created = await createPlan({ activity, time: time || undefined, endTime: endTime || undefined, date: date || undefined, productiveHours: productiveHours === '' ? 0 : productiveHours as number, recurrence, reminderMinutes: reminderMinutes === '' ? undefined : Number(reminderMinutes), timezoneOffsetMinutes: browserTimezoneOffsetMinutes });
       if (!created) {
         throw new Error('Plan was not created by API.');
       }
@@ -88,7 +89,7 @@ export default function Planner() {
     try {
       await updatePlan({ planId, activity: editingValues.activity, time: editingValues.time, endTime: editingValues.endTime, date: editingValues.date, productiveHours: editingValues.productiveHours, recurrence: editingValues.recurrence as PlanRecurrence | undefined, // include reminder if present
         // @ts-ignore
-        reminderMinutes: editingValues.reminderMinutes === undefined ? undefined : Number(editingValues.reminderMinutes) });
+        reminderMinutes: editingValues.reminderMinutes === undefined ? undefined : Number(editingValues.reminderMinutes), timezoneOffsetMinutes: browserTimezoneOffsetMinutes });
       setEditing(null); setEditingValues({}); loadPlans();
     } catch (err: any) { setError(err.message || String(err)); }
     finally { setBusy(false); }
@@ -105,7 +106,7 @@ export default function Planner() {
     if (!window.confirm(`Unschedule "${plan.activity}"?`)) return;
     setBusy(true);
     try {
-      await createTask({ title: plan.activity, date: plan.date, time: plan.time, productiveHours: plan.productiveHours });
+      await createTask({ title: plan.activity, date: plan.date, time: plan.time, productiveHours: plan.productiveHours, timezoneOffsetMinutes: (plan as any).timezoneOffsetMinutes ?? browserTimezoneOffsetMinutes });
       await deletePlan(plan.planId);
       loadPlans();
     } catch (err: any) {

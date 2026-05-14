@@ -206,6 +206,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const endTime = body.endTime || null;
     const recurrence = body.recurrence || null;
     const reminderMinutes = body.reminderMinutes !== undefined ? Number(body.reminderMinutes) : null;
+    const timezoneOffsetMinutes = body.timezoneOffsetMinutes !== undefined ? Number(body.timezoneOffsetMinutes) : null;
     const completed = !!body.completed;
     const type = resource === '/planner' ? 'plan' : 'task';
     const createdAt = new Date().toISOString();
@@ -217,6 +218,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (endTime) item.endTime = endTime;
     if (recurrence) item.recurrence = recurrence;
     if (reminderMinutes !== null && !isNaN(reminderMinutes)) item.reminderMinutes = reminderMinutes;
+    if (timezoneOffsetMinutes !== null && !isNaN(timezoneOffsetMinutes)) item.timezoneOffsetMinutes = timezoneOffsetMinutes;
     if (completedAt) item.completedAt = completedAt;
 
     try {
@@ -242,6 +244,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const endTime = body.endTime;
     const recurrence = body.recurrence;
     const reminderMinutes = body.reminderMinutes;
+    const timezoneOffsetMinutes = body.timezoneOffsetMinutes;
     const completed = body.completed;
 
     const updates: string[] = [];
@@ -262,6 +265,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (endTime !== undefined) { setField('endTime', ':endTime', endTime); }
     if (recurrence !== undefined) { setField('recurrence', ':recurrence', recurrence); }
     if (reminderMinutes !== undefined) { setField('reminderMinutes', ':reminderMinutes', Number(reminderMinutes)); }
+    if (timezoneOffsetMinutes !== undefined) { setField('timezoneOffsetMinutes', ':timezoneOffsetMinutes', Number(timezoneOffsetMinutes)); }
     if (completed !== undefined) {
       setField('completed', ':completed', !!completed);
       if (completed) {

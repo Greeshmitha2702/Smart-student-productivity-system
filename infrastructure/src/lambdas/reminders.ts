@@ -3,16 +3,27 @@ import { DynamoDB, SES } from 'aws-sdk';
 const tableName = process.env.TABLE_NAME!;
 const defaultReminderMinutes = Number(process.env.DEFAULT_REMINDER_MINUTES || 15);
 const windowMinutes = Number(process.env.WINDOW_MINUTES || 5);
+const defaultTimezoneOffsetMinutes = Number(process.env.DEFAULT_TIMEZONE_OFFSET_MINUTES || -330);
 const senderEmail = process.env.SENDER_EMAIL || 'noreply@studentproductivity.app';
 
 const ddb = new DynamoDB.DocumentClient();
 const ses = new SES({ region: 'us-east-1' });
 
-function parseScheduledDate(date?: string | null, time?: string | null) {
+function parseScheduledDate(date?: string | null, time?: string | null, timezoneOffsetMinutes?: number | null) {
   if (!date) return null;
 
   const normalizedTime = time || '09:00';
-  const scheduled = new Date(`${date}T${normalizedTime}:00`);
+  const effectiveTimezoneOffsetMinutes = timezoneOffsetMinutes === undefined || timezoneOffsetMinutes === null
+    ? defaultTimezoneOffsetMinutes
+    : Number(timezoneOffsetMinutes);
+
+  const scheduled = new Date(Date.UTC(
+        Number(date.slice(0, 4)),
+        Number(date.slice(5, 7)) - 1,
+        Number(date.slice(8, 10)),
+        Number(normalizedTime.slice(0, 2)),
+        Number(normalizedTime.slice(3, 5))
+      ) + (effectiveTimezoneOffsetMinutes * 60 * 1000));
   if (!isNaN(scheduled.getTime())) {
     return scheduled;
   }
@@ -61,7 +72,7 @@ export const handler = async () => {
       continue;
     }
 
-    const schedule = parseScheduledDate(item.date, item.time);
+    const schedule = parseScheduledDate(item.date, item.time, item.timezoneOffsetMinutes);
     if (!schedule) {
       console.log(`[ReminderLambda] Skipping ${item.taskId}: could not parse date=${item.date} time=${item.time}`);
       continue;

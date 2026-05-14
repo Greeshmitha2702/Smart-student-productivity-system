@@ -26,7 +26,7 @@ export async function fetchTasks(filters?: { q?: string; startDate?: string; end
     throw err;
   }
 }
-export async function createTask(task: { title: string; completed?: boolean; date?: string; time?: string; productiveHours?: number; priority?: 'low' | 'medium' | 'high'; taskId?: string; reminderMinutes?: number; }) {
+export async function createTask(task: { title: string; completed?: boolean; date?: string; time?: string; productiveHours?: number; priority?: 'low' | 'medium' | 'high'; taskId?: string; reminderMinutes?: number; timezoneOffsetMinutes?: number; }) {
   const userId = await getCurrentUserId();
   try {
     const headers = await authHeaders();
@@ -42,7 +42,7 @@ export async function createTask(task: { title: string; completed?: boolean; dat
   }
 }
 
-export async function updateTask(task: { taskId: string; title?: string; completed?: boolean; date?: string; time?: string; productiveHours?: number; priority?: 'low' | 'medium' | 'high'; reminderMinutes?: number; }) {
+export async function updateTask(task: { taskId: string; title?: string; completed?: boolean; date?: string; time?: string; productiveHours?: number; priority?: 'low' | 'medium' | 'high'; reminderMinutes?: number; timezoneOffsetMinutes?: number; }) {
   const userId = await getCurrentUserId();
   try {
     const headers = await authHeaders();

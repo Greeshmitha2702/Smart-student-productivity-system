@@ -17,6 +17,7 @@ type Task = {
 };
 
 export default function Tasks() {
+  const browserTimezoneOffsetMinutes = new Date().getTimezoneOffset();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
@@ -57,7 +58,7 @@ export default function Tasks() {
     setMessage(null);
     setBusy(true);
     try {
-      const created = await createTask({ title, completed: false, date: date || undefined, time: time || undefined, productiveHours: productiveHours === '' ? 0 : productiveHours as number, priority, reminderMinutes: reminderMinutes === '' ? undefined : Number(reminderMinutes) });
+      const created = await createTask({ title, completed: false, date: date || undefined, time: time || undefined, productiveHours: productiveHours === '' ? 0 : productiveHours as number, priority, reminderMinutes: reminderMinutes === '' ? undefined : Number(reminderMinutes), timezoneOffsetMinutes: browserTimezoneOffsetMinutes });
       if (!created) {
         throw new Error('Task was not created by API.');
       }
@@ -124,7 +125,7 @@ export default function Tasks() {
     try {
       await updateTask({ taskId, title: editingValues.title, date: editingValues.date, time: editingValues.time, productiveHours: editingValues.productiveHours, priority: editingValues.priority as TaskPriority | undefined, // include reminderMinutes if set
         // @ts-ignore
-        reminderMinutes: editingValues.reminderMinutes === undefined ? undefined : Number(editingValues.reminderMinutes) });
+        reminderMinutes: editingValues.reminderMinutes === undefined ? undefined : Number(editingValues.reminderMinutes), timezoneOffsetMinutes: browserTimezoneOffsetMinutes });
       setEditingId(null);
       setEditingValues({});
       loadTasks({ q: searchQ });
