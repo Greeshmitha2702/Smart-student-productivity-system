@@ -6,18 +6,17 @@ import { NotificationStack } from './stacks/NotificationStack';
 import { MonitoringStack } from './stacks/MonitoringStack';
 import { FrontendHostingStack } from './stacks/FrontendHostingStack';
 
-import { v4 as uuidv4 } from 'uuid';
-
 const app = new App();
-const uuid = uuidv4();
 
-const authStack = new AuthStack(app, `AuthStack-${uuid}`);
-const dbStack = new DatabaseStack(app, `DatabaseStack-${uuid}`);
-const notificationStack = new NotificationStack(app, `NotificationStack-${uuid}`);
-const monitoringStack = new MonitoringStack(app, `MonitoringStack-${uuid}`);
-const apiStack = new ApiStack(app, `ApiStack-${uuid}`, {
+const authStack = new AuthStack(app, 'AuthStack');
+const dbStack = new DatabaseStack(app, 'DatabaseStack');
+const notificationStack = new NotificationStack(app, 'NotificationStack', {
+  table: dbStack.table
+});
+const monitoringStack = new MonitoringStack(app, 'MonitoringStack');
+const apiStack = new ApiStack(app, 'ApiStack', {
   userPool: authStack.userPool,
   table: dbStack.table,
   notificationTopic: notificationStack.topic
 });
-new FrontendHostingStack(app, `FrontendHostingStack-${uuid}`);
+new FrontendHostingStack(app, 'FrontendHostingStack');

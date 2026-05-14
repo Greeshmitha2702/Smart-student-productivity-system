@@ -1,0 +1,1 @@
+{"completed":{"BOOL":false},"type":{"S":"task"},"createdAt":{"S":"2026-05-14 15:19:40"},"reminderMinutes":{"N":"2"},"title":{"S":"E2E Reminder Test"},"time":{"S":"09:51"},"taskId":{"S":"e2e2-63914348972067"},"ownerEmail":{"S":"e2e2-test-63914348972067@example.com"},"date":{"S":"2026-05-14"},"userId":{"S":"2498b438-9001-7015-b17f-122b10d9e67d"}}

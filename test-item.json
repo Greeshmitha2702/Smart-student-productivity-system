@@ -1,0 +1,29 @@
+{
+    "completed":  {
+                      "BOOL":  false
+                  },
+    "type":  {
+                 "S":  "task"
+             },
+    "reminderMinutes":  {
+                            "N":  "2"
+                        },
+    "title":  {
+                  "S":  "Email Test"
+              },
+    "time":  {
+                 "S":  "08:57"
+             },
+    "taskId":  {
+                   "S":  "email-test-63914345722443"
+               },
+    "ownerEmail":  {
+                       "S":  "bingumallagreeshmitha@gmail.com"
+                   },
+    "date":  {
+                 "S":  "2026-05-14"
+             },
+    "userId":  {
+                   "S":  "2498b438-9001-7015-b17f-122b10d9e67d"
+               }
+}

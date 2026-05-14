@@ -32,7 +32,7 @@ export class ApiStack extends Stack {
 
     // Example: Lambda for Task CRUD
     const taskLambda = new NodejsFunction(this, 'TaskLambda', {
-      runtime: Runtime.NODEJS_18_X,
+      runtime: Runtime.NODEJS_20_X,
       entry: join(__dirname, '..', '/lambdas/task.ts'),
       handler: 'handler',
       environment: {
@@ -57,5 +57,9 @@ export class ApiStack extends Stack {
     planner.addMethod('POST', new LambdaIntegration(taskLambda), { authorizer });
     planner.addMethod('PUT', new LambdaIntegration(taskLambda), { authorizer });
     planner.addMethod('DELETE', new LambdaIntegration(taskLambda), { authorizer });
+
+    const analytics = api.root.addResource('analytics');
+    analytics.addMethod('GET', new LambdaIntegration(taskLambda), { authorizer });
+    analytics.addMethod('POST', new LambdaIntegration(taskLambda), { authorizer });
   }
 }
