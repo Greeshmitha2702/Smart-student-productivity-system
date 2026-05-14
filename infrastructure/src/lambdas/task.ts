@@ -44,6 +44,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   const resource = event.resource; // '/planner' or '/tasks'
   const userId = event.queryStringParameters?.userId || 'demo-user';
+  const claims = (event.requestContext as any)?.authorizer?.claims || {};
+  const ownerEmail = claims.email || claims['cognito:username'] || claims.preferred_username || null;
 
   const toDayKey = (iso?: string | null) => {
     if (!iso) return null;
@@ -203,15 +205,18 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const priority = body.priority || null;
     const endTime = body.endTime || null;
     const recurrence = body.recurrence || null;
+    const reminderMinutes = body.reminderMinutes !== undefined ? Number(body.reminderMinutes) : null;
     const completed = !!body.completed;
     const type = resource === '/planner' ? 'plan' : 'task';
     const createdAt = new Date().toISOString();
     const completedAt = completed ? new Date().toISOString() : null;
 
     const item: any = { userId, taskId, title, date, time, productiveHours, type, createdAt, completed };
+    if (ownerEmail) item.ownerEmail = ownerEmail;
     if (priority) item.priority = priority;
     if (endTime) item.endTime = endTime;
     if (recurrence) item.recurrence = recurrence;
+    if (reminderMinutes !== null && !isNaN(reminderMinutes)) item.reminderMinutes = reminderMinutes;
     if (completedAt) item.completedAt = completedAt;
 
     try {
@@ -236,18 +241,35 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const priority = body.priority;
     const endTime = body.endTime;
     const recurrence = body.recurrence;
+    const reminderMinutes = body.reminderMinutes;
     const completed = body.completed;
 
     const updates: string[] = [];
     const exprVals: any = {};
-    if (title !== undefined) { updates.push('title = :title'); exprVals[':title'] = title; }
-    if (date !== undefined) { updates.push('date = :date'); exprVals[':date'] = date; }
-    if (time !== undefined) { updates.push('time = :time'); exprVals[':time'] = time; }
-    if (productiveHours !== undefined) { updates.push('productiveHours = :ph'); exprVals[':ph'] = productiveHours; }
-    if (priority !== undefined) { updates.push('priority = :priority'); exprVals[':priority'] = priority; }
-    if (endTime !== undefined) { updates.push('endTime = :endTime'); exprVals[':endTime'] = endTime; }
-    if (recurrence !== undefined) { updates.push('recurrence = :recurrence'); exprVals[':recurrence'] = recurrence; }
-    if (completed !== undefined) { updates.push('completed = :completed'); exprVals[':completed'] = !!completed; if (completed) { updates.push('completedAt = :completedAt'); exprVals[':completedAt'] = new Date().toISOString(); } else { updates.push('completedAt = :null'); exprVals[':null'] = null; } }
+    const exprNames: Record<string, string> = {};
+    const setField = (field: string, valueToken: string, value: any) => {
+      const nameToken = `#${field}`;
+      exprNames[nameToken] = field;
+      updates.push(`${nameToken} = ${valueToken}`);
+      exprVals[valueToken] = value;
+    };
+
+    if (title !== undefined) { setField('title', ':title', title); }
+    if (date !== undefined) { setField('date', ':date', date); }
+    if (time !== undefined) { setField('time', ':time', time); }
+    if (productiveHours !== undefined) { setField('productiveHours', ':ph', productiveHours); }
+    if (priority !== undefined) { setField('priority', ':priority', priority); }
+    if (endTime !== undefined) { setField('endTime', ':endTime', endTime); }
+    if (recurrence !== undefined) { setField('recurrence', ':recurrence', recurrence); }
+    if (reminderMinutes !== undefined) { setField('reminderMinutes', ':reminderMinutes', Number(reminderMinutes)); }
+    if (completed !== undefined) {
+      setField('completed', ':completed', !!completed);
+      if (completed) {
+        setField('completedAt', ':completedAt', new Date().toISOString());
+      } else {
+        setField('completedAt', ':null', null);
+      }
+    }
 
     if (updates.length === 0) return respond(400, { error: 'No updatable fields provided' });
 
@@ -256,6 +278,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         TableName: tableName,
         Key: { userId, taskId },
         UpdateExpression: 'set ' + updates.join(', '),
+        ExpressionAttributeNames: exprNames,
         ExpressionAttributeValues: exprVals
       }).promise();
       return respond(200, { message: 'Item updated' });

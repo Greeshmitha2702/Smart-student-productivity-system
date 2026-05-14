@@ -12,7 +12,17 @@ const quotes = [
 ];
 
 export default function Home() {
-  const [summary, setSummary] = useState({ todayTasks: 0, todayPlans: 0, todayHours: 0, completedTasks: 0 });
+  const [summary, setSummary] = useState({
+    totalTasks: 0,
+    totalPlans: 0,
+    todayTasks: 0,
+    todayPlans: 0,
+    todayHours: 0,
+    completedTasks: 0,
+    completedPlans: 0,
+    totalProductiveHours: 0,
+    completedProductiveHours: 0
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,18 +38,28 @@ export default function Home() {
       setError(null);
       try {
         const [tasks, plans] = await Promise.all([fetchTasks(), fetchPlans()]);
-        const todayTasks = (tasks || []).filter((t: any) => (t.date || '').slice(0, 10) === todayKey).length;
-        const todayPlans = (plans || []).filter((p: any) => (p.date || '').slice(0, 10) === todayKey).length;
+        const totalTasks = (tasks || []).length;
+        const totalPlans = (plans || []).length;
+        const todayTasks = (tasks || []).filter((t: any) => (t.date || '').slice(0, 10) === todayKey && !t.completed).length;
+        const todayPlans = (plans || []).filter((p: any) => (p.date || '').slice(0, 10) === todayKey && !p.completed).length;
         const todayHours = [...(tasks || []), ...(plans || [])]
           .filter((i: any) => (i.date || '').slice(0, 10) === todayKey)
           .reduce((s: number, i: any) => s + (Number(i.productiveHours) || 0), 0);
-        const completedTasks = (tasks || []).filter((t: any) => !!t.completed).length;
+        const completedTasks = (tasks || []).filter((i: any) => !!i.completed).length;
+        const completedPlans = (plans || []).filter((i: any) => !!i.completed).length;
+        const totalProductiveHours = [...(tasks || []), ...(plans || [])].reduce((s: number, i: any) => s + (Number(i.productiveHours) || 0), 0);
+        const completedProductiveHours = [...(tasks || []), ...(plans || [])].filter((i: any) => !!i.completed).reduce((s: number, i: any) => s + (Number(i.productiveHours) || 0), 0);
 
         setSummary({
+          totalTasks,
+          totalPlans,
           todayTasks,
           todayPlans,
           todayHours: Math.round(todayHours * 100) / 100,
-          completedTasks
+          completedTasks,
+          completedPlans,
+          totalProductiveHours: Math.round(totalProductiveHours * 100) / 100,
+          completedProductiveHours: Math.round(completedProductiveHours * 100) / 100
         });
       } catch (err: any) {
         setError(err?.message || String(err));
@@ -64,11 +84,27 @@ export default function Home() {
       {error && <div style={{ color: '#b42318' }}>{error}</div>}
 
       {!loading && !error && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 }}>
-          <Card title="Tasks Due Today" value={summary.todayTasks} />
-          <Card title="Planned Sessions Today" value={summary.todayPlans} />
-          <Card title="Today's Productive Hours" value={summary.todayHours} />
-          <Card title="Completed Tasks" value={summary.completedTasks} />
+        <div style={{ display: 'grid', gap: 12 }}>
+          <Section title="Total">
+            <Card title="Total Tasks" value={summary.totalTasks} />
+            <Card title="Total Plans" value={summary.totalPlans} />
+          </Section>
+
+          <Section title="Due Works">
+            <Card title="Tasks Due" value={summary.todayTasks} />
+            <Card title="Plans Due" value={summary.todayPlans} />
+          </Section>
+
+          <Section title="Completed">
+            <Card title="Completed Tasks" value={summary.completedTasks} />
+            <Card title="Completed Plans" value={summary.completedPlans} />
+          </Section>
+
+          <Section title="Productivity">
+            <Card title="Today's Productive Hours" value={summary.todayHours} />
+            <Card title="Total Productive Hours" value={summary.totalProductiveHours} />
+            <Card title="Completed Productive Hours" value={summary.completedProductiveHours} />
+          </Section>
         </div>
       )}
 
@@ -81,9 +117,22 @@ export default function Home() {
 
 function Card({ title, value }: { title: string; value: number }) {
   return (
-    <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 14, background: '#fff' }}>
+    <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 14, background: '#fff', minWidth: 160 }}>
       <div style={{ fontSize: 12, color: '#6b7280' }}>{title}</div>
       <div style={{ fontSize: 28, fontWeight: 700, color: '#0f172a' }}>{value}</div>
     </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <details open style={{ border: '1px solid #dbe3ef', borderRadius: 14, background: '#f8fbff', padding: '0.25rem 0.75rem 0.75rem' }}>
+      <summary style={{ cursor: 'pointer', listStyle: 'none', fontWeight: 700, color: '#0f172a', padding: '0.5rem 0.25rem' }}>
+        {title}
+      </summary>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12, paddingTop: 8 }}>
+        {children}
+      </div>
+    </details>
   );
 }

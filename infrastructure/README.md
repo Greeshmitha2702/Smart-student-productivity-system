@@ -51,6 +51,7 @@ CDK_DEFAULT_REGION=us-east-1
 CDK_DEFAULT_ACCOUNT=123456789012
 PROJECT_NAME=SmartStudentProductivity
 ENVIRONMENT=dev
+REMINDER_EMAIL=you@example.com
 ```
 
 ### 2. Bootstrap CDK (first time only)
@@ -75,7 +76,8 @@ This will:
 2. Create DynamoDB table (userId, taskId, type, completed, priority, recurrence, etc.)
 3. Create Lambda function for REST handler
 4. Create API Gateway with routes + Cognito authorizer
-5. Output API Gateway endpoint URL
+5. Create SNS topic + scheduled reminder Lambda for low-cost reminder emails
+6. Output API Gateway endpoint URL
 
 ### Verify Deployment
 
@@ -139,6 +141,17 @@ Single table, flexible item structure:
 | updatedAt | STRING | ISO timestamp |
 
 ## Monitoring & Logs
+
+## Reminder Emails
+
+The lowest-friction AWS option for this project is **SNS email subscriptions** driven by a scheduled Lambda.
+
+- Set `REMINDER_EMAIL` in your infrastructure `.env`
+- Deploy the stack
+- Confirm the subscription email AWS sends to that address
+- Reminder Lambda scans DynamoDB and publishes matching reminders to SNS
+
+This keeps the flow in standard serverless services and avoids introducing SES setup complexity for a student/free-tier project.
 
 ### CloudWatch Logs
 

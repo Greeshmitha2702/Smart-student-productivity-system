@@ -68,6 +68,11 @@ npm start
 - Daily motivational quote (changes per calendar day)
 - Today's Summary: tasks due today, planned sessions today, today's productive hours, total completed tasks
 
+### Reminder Emails
+- Reminder emails use an SNS topic subscription plus a scheduled Lambda
+- Set `REMINDER_EMAIL` in `infrastructure/.env` and confirm the subscription email from AWS
+- This is the most free-tier-friendly reminder option in this repo
+
 ## Tech Stack
 - **Frontend:** React 18 + TypeScript, AWS Amplify
 - **Backend:** AWS CDK v2 (TypeScript), Lambda, API Gateway, DynamoDB (single-table design)

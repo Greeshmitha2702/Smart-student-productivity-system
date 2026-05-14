@@ -1,0 +1,1 @@
+{ "userId": {"S": "2498b438-9001-7015-b17f-122b10d9e67d"}, "taskId": {"S": "e2e-63914348861125"}, "type": {"S": "task"}, "title": {"S": "E2E Reminder Test"}, "date": {"S": "2026-05-14"}, "time": {"S": "09:49"}, "reminderMinutes": {"N": "2"}, "completed": {"BOOL": false}, "ownerEmail": {"S": "e2e-test-63914348861125@example.com"}, "createdAt": {"S": "2026-05-14 15:17:50"} }

@@ -109,6 +109,18 @@ export default function Planner() {
     }
   };
 
+  const toggleComplete = async (plan: PlanItem) => {
+    setBusy(true);
+    try {
+      await updatePlan({ planId: plan.planId, completed: !plan.completed });
+      await loadPlans({ q: searchQ });
+    } catch (err: any) {
+      setError(err.message || String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     loadPlans(searchQ ? { q: searchQ } : undefined);
@@ -149,7 +161,8 @@ export default function Planner() {
             <li key={plan.planId} style={{ display: 'flex', gap: 8, padding: 8, borderBottom: '1px solid #eee', alignItems: 'center' }}>
               {editing === plan.planId ? (
                 <>
-                  <input disabled={busy} style={{ flex: 1 }} value={editingValues.activity || ''} onChange={e => setEditingValues(v => ({ ...v, activity: e.target.value }))} />
+                  <input disabled={busy} type="checkbox" checked={!!plan.completed} onChange={() => toggleComplete(plan)} style={{ marginRight: 8 }} />
+                  <input disabled={busy} style={{ flex: 1 }} value={editingValues.activity || ''} onChange={e => setEditingValues(v => ({ ...v, activity: e.target.value }))} placeholder="Plan name" />
                   <input disabled={busy} type="date" value={editingValues.date || ''} onChange={e => setEditingValues(v => ({ ...v, date: e.target.value }))} />
                   <input disabled={busy} type="time" value={editingValues.time || ''} onChange={e => setEditingValues(v => ({ ...v, time: e.target.value }))} />
                   <input disabled={busy} type="time" value={editingValues.endTime || ''} onChange={e => setEditingValues(v => ({ ...v, endTime: e.target.value }))} />
@@ -164,6 +177,7 @@ export default function Planner() {
                 </>
               ) : (
                 <>
+                  <input disabled={busy} type="checkbox" checked={!!plan.completed} onChange={() => toggleComplete(plan)} style={{ marginRight: 8 }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600 }}>{plan.activity}</div>
                     <div style={{ fontSize: 12, color: '#666' }}>{plan.date || ''} {plan.time ? `· ${plan.time}` : ''} {plan.endTime ? `-${plan.endTime}` : ''} {plan.productiveHours ? `· ${plan.productiveHours}h` : ''} {plan.recurrence && plan.recurrence !== 'none' ? `· ${plan.recurrence}` : ''}</div>

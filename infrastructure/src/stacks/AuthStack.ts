@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import { UserPool, UserPoolClient } from 'aws-cdk-lib/aws-cognito';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
+import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { join } from 'path';
 
 export class AuthStack extends Stack {
@@ -13,10 +14,20 @@ export class AuthStack extends Stack {
     super(scope, id, props);
 
     const preSignUpLambda = new NodejsFunction(this, 'PreSignUpLambda', {
-      runtime: Runtime.NODEJS_18_X,
+      runtime: Runtime.NODEJS_20_X,
       entry: join(__dirname, '..', 'lambdas', 'preSignUp.ts'),
       handler: 'handler'
     });
+    // Allow toggling auto-confirm/auto-verify from environment
+    preSignUpLambda.addEnvironment('AUTO_CONFIRM', 'false');
+    preSignUpLambda.addEnvironment('AUTO_VERIFY', 'false');
+
+    // Grant SES permission to verify user emails on sign-up
+    preSignUpLambda.addToRolePolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ['ses:VerifyEmailIdentity'],
+      resources: ['*']
+    }));
 
     this.userPool = new UserPool(this, 'UserPool', {
       selfSignUpEnabled: true,

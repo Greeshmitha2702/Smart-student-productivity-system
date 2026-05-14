@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Auth } from 'aws-amplify';
 import { recordDailyLogin } from '../api/analytics';
+import { startNotificationService } from '../notifications';
 
 function AuthWrapper({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
-  const [mode, setMode] = useState<'signIn' | 'signUp' | 'forgotPassword' | 'forgotConfirm'>('signIn');
+  const [mode, setMode] = useState<'signIn' | 'signUp' | 'forgotPassword' | 'forgotConfirm' | 'verify'>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -44,9 +45,28 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
           password,
           attributes: { email: email.trim() }
         });
+        // After sign-up, do not auto sign-in. Show verification instructions page.
+        setMode('verify');
+        setPassword('');
+        return;
       }
 
-      await Auth.signIn(email.trim(), password);
+        const signInResult = await Auth.signIn(email.trim(), password);
+        // After sign-in, check whether the user's email is verified. If not, prevent access.
+        try {
+          const current = await Auth.currentAuthenticatedUser();
+          const verified = (current?.attributes && (current.attributes.email_verified === true || current.attributes.email_verified === 'true'));
+          if (!verified) {
+            await Auth.signOut();
+            setMode('verify');
+            setError('Please verify your email address. We sent a link to your inbox.');
+            return;
+          }
+        } catch (checkErr) {
+          // If we can't determine verification status, continue but log.
+          // eslint-disable-next-line no-console
+          console.warn('Could not check email verification status', checkErr);
+        }
       // confirm session tokens are available
       try {
         const session = await Auth.currentSession();
@@ -61,6 +81,20 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       }
       await recordDailyLogin();
       setAuthenticated(true);
+      try {
+        startNotificationService();
+      } catch {}
+    } catch (err: any) {
+      setError(err?.message || String(err));
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setError(null);
+    try {
+      if (!email.trim()) return setError('Enter the email used to sign up to resend verification.');
+      await Auth.resendSignUp(email.trim());
+      setError('Verification email resent. Please check your inbox.');
     } catch (err: any) {
       setError(err?.message || String(err));
     }
@@ -131,7 +165,19 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '2rem' }}>
       <div style={{ width: '100%', maxWidth: 420, padding: '2rem', border: '1px solid #d0d7de', borderRadius: 16, background: '#fff' }}>
         <h2 style={{ marginTop: 0 }}>Student Productivity System</h2>
-        <div style={{ display: 'grid', gap: 12 }}>
+        {mode === 'verify' ? (
+          <div style={{ display: 'grid', gap: 12, textAlign: 'center' }}>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>Thank you for signing up</p>
+            <p>We sent a verification link to your inbox. Please check your email and click the verification link to activate your account.</p>
+            <p>If you don't see the email, check your spam folder or click resend below.</p>
+            {error && <div style={{ color: '#b42318' }}>{error}</div>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8 }}>
+              <button type="button" onClick={() => setMode('signIn')} style={{ padding: '0.75rem 1rem' }}>Back to login</button>
+              <button type="button" onClick={handleResendVerification} style={{ padding: '0.75rem 1rem', background: 'transparent', border: '1px solid #d0d7de' }}>Resend verification</button>
+            </div>
+          </div>
+        ) : (
+        <form onSubmit={e => { e.preventDefault(); handleAuth(); }} style={{ display: 'grid', gap: 12 }}>
           <input
             type="email"
             value={email}
@@ -188,19 +234,19 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
           {error && <div style={{ color: '#b42318' }}>{error}</div>}
 
           {mode !== 'forgotPassword' && mode !== 'forgotConfirm' && (
-            <button onClick={handleAuth} style={{ padding: '0.75rem 1rem' }}>
+            <button type="submit" style={{ padding: '0.75rem 1rem' }}>
               {mode === 'signIn' ? 'Login' : 'Create Account'}
             </button>
           )}
 
           {mode === 'forgotPassword' && (
-            <button onClick={handleForgotPasswordRequest} style={{ padding: '0.75rem 1rem' }}>
+            <button type="button" onClick={handleForgotPasswordRequest} style={{ padding: '0.75rem 1rem' }}>
               Send reset code
             </button>
           )}
 
           {mode === 'forgotConfirm' && (
-            <button onClick={handleForgotPasswordConfirm} style={{ padding: '0.75rem 1rem' }}>
+            <button type="button" onClick={handleForgotPasswordConfirm} style={{ padding: '0.75rem 1rem' }}>
               Reset password
             </button>
           )}
@@ -233,6 +279,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
 
           {(mode === 'forgotPassword' || mode === 'forgotConfirm') && (
             <button
+              type="button"
               onClick={() => {
                 setError(null);
                 setMode('signIn');
@@ -242,10 +289,12 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
               Back to login
             </button>
           )}
-        </div>
+        </form>
+        )}
       </div>
     </div>
   );
 }
+
 
 export default AuthWrapper;
