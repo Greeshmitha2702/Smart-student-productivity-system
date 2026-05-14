@@ -10,6 +10,7 @@ type PlanItem = {
   time?: string; // hh:mm or ISO
   endTime?: string;
   activity: string;
+  title?: string;
   date?: string; // ISO date
   productiveHours?: number;
   recurrence?: PlanRecurrence;
@@ -34,6 +35,10 @@ export default function Planner() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  const getPlanName = (plan: Pick<PlanItem, 'activity' | 'title'>) => {
+    return (plan.activity || plan.title || 'Untitled plan').trim() || 'Untitled plan';
+  };
 
   const loadPlans = async (filters?: { q?: string }) => {
     setLoading(true);
@@ -79,7 +84,7 @@ export default function Planner() {
 
   const startEdit = (plan: PlanItem) => {
     setEditing(plan.planId);
-    setEditingValues({ activity: plan.activity, time: plan.time, endTime: plan.endTime, date: plan.date, productiveHours: plan.productiveHours, recurrence: plan.recurrence, // include existing reminder
+    setEditingValues({ activity: getPlanName(plan), time: plan.time, endTime: plan.endTime, date: plan.date, productiveHours: plan.productiveHours, recurrence: plan.recurrence, // include existing reminder
       // @ts-ignore
       reminderMinutes: (plan as any).reminderMinutes });
   };
@@ -103,7 +108,7 @@ export default function Planner() {
   };
 
   const handleDemote = async (plan: PlanItem) => {
-    if (!window.confirm(`Unschedule "${plan.activity}"?`)) return;
+    if (!window.confirm(`Unschedule "${getPlanName(plan)}"?`)) return;
     setBusy(true);
     try {
       await createTask({ title: plan.activity, date: plan.date, time: plan.time, productiveHours: plan.productiveHours, timezoneOffsetMinutes: (plan as any).timezoneOffsetMinutes ?? browserTimezoneOffsetMinutes });
@@ -188,7 +193,7 @@ export default function Planner() {
                 <>
                   <input disabled={busy} type="checkbox" checked={!!plan.completed} onChange={() => toggleComplete(plan)} style={{ marginRight: 8 }} />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600 }}>{plan.activity}</div>
+                    <div style={{ fontWeight: 600 }}>{getPlanName(plan)}</div>
                     <div style={{ fontSize: 12, color: '#666' }}>{plan.date || ''} {plan.time ? `· ${plan.time}` : ''} {plan.endTime ? `-${plan.endTime}` : ''} {plan.productiveHours ? `· ${plan.productiveHours}h` : ''} {plan.recurrence && plan.recurrence !== 'none' ? `· ${plan.recurrence}` : ''}</div>
                   </div>
                   <button disabled={busy} onClick={() => startEdit(plan)}>Edit</button>
