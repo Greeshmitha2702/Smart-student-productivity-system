@@ -1,15 +1,14 @@
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import { Distribution, OriginAccessIdentity } from 'aws-cdk-lib/aws-cloudfront';
-import { S3Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
+import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 
 export class FrontendHostingStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
     const siteBucket = new Bucket(this, 'SiteBucket', {
-      websiteIndexDocument: 'index.html',
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL
     });
 
@@ -24,9 +23,13 @@ export class FrontendHostingStack extends Stack {
     // Create CloudFront distribution
     new Distribution(this, 'SiteDistribution', {
       defaultBehavior: {
-        origin: new S3Origin(siteBucket, { originAccessIdentity: oai })
+        origin: S3BucketOrigin.withOriginAccessIdentity(siteBucket, { originAccessIdentity: oai })
       },
       defaultRootObject: 'index.html'
+    });
+
+    new CfnOutput(this, 'SiteBucketName', {
+      value: siteBucket.bucketName
     });
   }
 }

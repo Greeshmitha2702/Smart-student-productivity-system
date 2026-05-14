@@ -14,6 +14,7 @@ type PlanItem = {
   productiveHours?: number;
   recurrence?: PlanRecurrence;
   completed?: boolean;
+  reminderMinutes?: number;
 };
 
 export default function Planner() {
@@ -24,6 +25,7 @@ export default function Planner() {
   const [date, setDate] = useState('');
   const [productiveHours, setProductiveHours] = useState<number | ''>('');
   const [recurrence, setRecurrence] = useState<PlanRecurrence>('none');
+  const [reminderMinutes, setReminderMinutes] = useState<number | ''>('');
   const [editing, setEditing] = useState<string | null>(null);
   const [editingValues, setEditingValues] = useState<Partial<PlanItem>>({});
   const [searchQ, setSearchQ] = useState('');
@@ -60,11 +62,11 @@ export default function Planner() {
     setMessage(null);
     setBusy(true);
     try {
-      const created = await createPlan({ activity, time: time || undefined, endTime: endTime || undefined, date: date || undefined, productiveHours: productiveHours === '' ? 0 : productiveHours as number, recurrence });
+      const created = await createPlan({ activity, time: time || undefined, endTime: endTime || undefined, date: date || undefined, productiveHours: productiveHours === '' ? 0 : productiveHours as number, recurrence, reminderMinutes: reminderMinutes === '' ? undefined : Number(reminderMinutes) });
       if (!created) {
         throw new Error('Plan was not created by API.');
       }
-      setTime(''); setEndTime(''); setActivity(''); setDate(''); setProductiveHours(''); setRecurrence('none');
+      setTime(''); setEndTime(''); setActivity(''); setDate(''); setProductiveHours(''); setRecurrence('none'); setReminderMinutes('');
       await loadPlans();
       setMessage('Plan added successfully.');
     } catch (err: any) {
@@ -76,13 +78,17 @@ export default function Planner() {
 
   const startEdit = (plan: PlanItem) => {
     setEditing(plan.planId);
-    setEditingValues({ activity: plan.activity, time: plan.time, endTime: plan.endTime, date: plan.date, productiveHours: plan.productiveHours, recurrence: plan.recurrence });
+    setEditingValues({ activity: plan.activity, time: plan.time, endTime: plan.endTime, date: plan.date, productiveHours: plan.productiveHours, recurrence: plan.recurrence, // include existing reminder
+      // @ts-ignore
+      reminderMinutes: (plan as any).reminderMinutes });
   };
 
   const saveEdit = async (planId: string) => {
     setBusy(true);
     try {
-      await updatePlan({ planId, activity: editingValues.activity, time: editingValues.time, endTime: editingValues.endTime, date: editingValues.date, productiveHours: editingValues.productiveHours, recurrence: editingValues.recurrence as PlanRecurrence | undefined });
+      await updatePlan({ planId, activity: editingValues.activity, time: editingValues.time, endTime: editingValues.endTime, date: editingValues.date, productiveHours: editingValues.productiveHours, recurrence: editingValues.recurrence as PlanRecurrence | undefined, // include reminder if present
+        // @ts-ignore
+        reminderMinutes: editingValues.reminderMinutes === undefined ? undefined : Number(editingValues.reminderMinutes) });
       setEditing(null); setEditingValues({}); loadPlans();
     } catch (err: any) { setError(err.message || String(err)); }
     finally { setBusy(false); }
@@ -141,12 +147,13 @@ export default function Planner() {
         <button disabled={busy} type="button" onClick={() => { setSearchQ(''); loadPlans(); }}>Clear</button>
       </form>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 120px 100px 120px 80px', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 120px 100px 120px 120px 80px', gap: 8, marginBottom: 16 }}>
         <input disabled={busy} value={activity} onChange={e => setActivity(e.target.value)} placeholder="Activity" />
         <input disabled={busy} type="date" value={date} onChange={e => setDate(e.target.value)} />
         <input disabled={busy} type="time" value={time} onChange={e => setTime(e.target.value)} />
         <input disabled={busy} type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
         <input disabled={busy} type="number" min={0} step={0.25} value={productiveHours === '' ? '' : String(productiveHours)} onChange={e => setProductiveHours(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Hours" />
+        <input disabled={busy} type="number" min={0} step={1} value={reminderMinutes === '' ? '' : String(reminderMinutes)} onChange={e => setReminderMinutes(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Remind (min)" />
         <select disabled={busy} value={recurrence} onChange={e => setRecurrence(e.target.value as PlanRecurrence)}>
           <option value="none">No repeat</option>
           <option value="daily">Daily</option>
@@ -167,6 +174,7 @@ export default function Planner() {
                   <input disabled={busy} type="time" value={editingValues.time || ''} onChange={e => setEditingValues(v => ({ ...v, time: e.target.value }))} />
                   <input disabled={busy} type="time" value={editingValues.endTime || ''} onChange={e => setEditingValues(v => ({ ...v, endTime: e.target.value }))} />
                   <input disabled={busy} type="number" min={0} step={0.25} value={editingValues.productiveHours === undefined ? '' : String(editingValues.productiveHours)} onChange={e => setEditingValues(v => ({ ...v, productiveHours: e.target.value === '' ? undefined : Number(e.target.value) }))} style={{ width: 80 }} />
+                  <input disabled={busy} type="number" min={0} step={1} value={editingValues.reminderMinutes === undefined ? '' : String(editingValues.reminderMinutes)} onChange={e => setEditingValues(v => ({ ...v, reminderMinutes: e.target.value === '' ? undefined : Number(e.target.value) }))} style={{ width: 100 }} placeholder="Remind (min)" />
                   <select disabled={busy} value={(editingValues.recurrence as PlanRecurrence | undefined) || 'none'} onChange={e => setEditingValues(v => ({ ...v, recurrence: e.target.value as PlanRecurrence }))}>
                     <option value="none">No repeat</option>
                     <option value="daily">Daily</option>

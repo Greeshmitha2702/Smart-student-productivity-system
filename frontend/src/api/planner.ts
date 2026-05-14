@@ -27,7 +27,7 @@ export async function fetchPlans(filters?: { q?: string; startDate?: string; end
   }
 }
 
-export async function createPlan(plan: { activity: string; time?: string; endTime?: string; date?: string; productiveHours?: number; recurrence?: 'none' | 'daily' | 'weekly'; planId?: string; }) {
+export async function createPlan(plan: { activity: string; time?: string; endTime?: string; date?: string; productiveHours?: number; recurrence?: 'none' | 'daily' | 'weekly'; planId?: string; reminderMinutes?: number; }) {
   const userId = await getCurrentUserId();
   try {
     const headers = await authHeaders();
@@ -43,7 +43,7 @@ export async function createPlan(plan: { activity: string; time?: string; endTim
   }
 }
 
-export async function updatePlan(plan: { planId: string; activity?: string; time?: string; endTime?: string; date?: string; productiveHours?: number; recurrence?: 'none' | 'daily' | 'weekly'; completed?: boolean; }) {
+export async function updatePlan(plan: { planId: string; activity?: string; time?: string; endTime?: string; date?: string; productiveHours?: number; recurrence?: 'none' | 'daily' | 'weekly'; completed?: boolean; reminderMinutes?: number; }) {
   const userId = await getCurrentUserId();
   try {
     const headers = await authHeaders();

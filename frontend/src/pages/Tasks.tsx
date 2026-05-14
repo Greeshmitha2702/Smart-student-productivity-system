@@ -13,6 +13,7 @@ type Task = {
   time?: string;
   productiveHours?: number;
   priority?: TaskPriority;
+  reminderMinutes?: number;
 };
 
 export default function Tasks() {
@@ -22,6 +23,7 @@ export default function Tasks() {
   const [time, setTime] = useState('');
   const [productiveHours, setProductiveHours] = useState<number | ''>('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [reminderMinutes, setReminderMinutes] = useState<number | ''>('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValues, setEditingValues] = useState<Partial<Task>>({});
   const [loading, setLoading] = useState(false);
@@ -55,11 +57,11 @@ export default function Tasks() {
     setMessage(null);
     setBusy(true);
     try {
-      const created = await createTask({ title, completed: false, date: date || undefined, time: time || undefined, productiveHours: productiveHours === '' ? 0 : productiveHours as number, priority });
+      const created = await createTask({ title, completed: false, date: date || undefined, time: time || undefined, productiveHours: productiveHours === '' ? 0 : productiveHours as number, priority, reminderMinutes: reminderMinutes === '' ? undefined : Number(reminderMinutes) });
       if (!created) {
         throw new Error('Task was not created by API.');
       }
-      setTitle(''); setDate(''); setTime(''); setProductiveHours(''); setPriority('medium');
+      setTitle(''); setDate(''); setTime(''); setProductiveHours(''); setPriority('medium'); setReminderMinutes('');
       await loadTasks();
       setMessage('Task added successfully.');
     } catch (err: any) {
@@ -111,13 +113,18 @@ export default function Tasks() {
 
   const startEdit = (task: Task) => {
     setEditingId(task.taskId);
-    setEditingValues({ title: task.title, date: task.date, time: task.time, productiveHours: task.productiveHours, priority: task.priority });
+    setEditingValues({ title: task.title, date: task.date, time: task.time, productiveHours: task.productiveHours, priority: task.priority, // keep optional
+      // copy any existing reminderMinutes into editing state
+      // @ts-ignore
+      reminderMinutes: (task as any).reminderMinutes });
   };
 
   const saveEdit = async (taskId: string) => {
     setBusy(true);
     try {
-      await updateTask({ taskId, title: editingValues.title, date: editingValues.date, time: editingValues.time, productiveHours: editingValues.productiveHours, priority: editingValues.priority as TaskPriority | undefined });
+      await updateTask({ taskId, title: editingValues.title, date: editingValues.date, time: editingValues.time, productiveHours: editingValues.productiveHours, priority: editingValues.priority as TaskPriority | undefined, // include reminderMinutes if set
+        // @ts-ignore
+        reminderMinutes: editingValues.reminderMinutes === undefined ? undefined : Number(editingValues.reminderMinutes) });
       setEditingId(null);
       setEditingValues({});
       loadTasks({ q: searchQ });
@@ -148,11 +155,12 @@ export default function Tasks() {
         <button disabled={busy} type="button" onClick={() => { setSearchQ(''); loadTasks(); }}>Clear</button>
       </form>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 120px 120px 80px', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 120px 120px 120px 80px', gap: 8, marginBottom: 16 }}>
         <input disabled={busy} value={title} onChange={e => setTitle(e.target.value)} placeholder="Task title" />
         <input disabled={busy} type="date" value={date} onChange={e => setDate(e.target.value)} />
         <input disabled={busy} type="time" value={time} onChange={e => setTime(e.target.value)} />
         <input disabled={busy} type="number" min={0} step={0.25} value={productiveHours === '' ? '' : String(productiveHours)} onChange={e => setProductiveHours(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Hours" />
+        <input disabled={busy} type="number" min={0} step={1} value={reminderMinutes === '' ? '' : String(reminderMinutes)} onChange={e => setReminderMinutes(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Remind (min)" />
         <select disabled={busy} value={priority} onChange={e => setPriority(e.target.value as TaskPriority)}>
           <option value="low">Low</option>
           <option value="medium">Medium</option>
@@ -172,6 +180,7 @@ export default function Tasks() {
                   <input disabled={busy} type="date" value={editingValues.date || ''} onChange={e => setEditingValues(v => ({ ...v, date: e.target.value }))} />
                   <input disabled={busy} type="time" value={editingValues.time || ''} onChange={e => setEditingValues(v => ({ ...v, time: e.target.value }))} />
                   <input disabled={busy} type="number" min={0} step={0.25} value={editingValues.productiveHours === undefined ? '' : String(editingValues.productiveHours)} onChange={e => setEditingValues(v => ({ ...v, productiveHours: e.target.value === '' ? undefined : Number(e.target.value) }))} style={{ width: 80 }} />
+                  <input disabled={busy} type="number" min={0} step={1} value={editingValues.reminderMinutes === undefined ? '' : String(editingValues.reminderMinutes)} onChange={e => setEditingValues(v => ({ ...v, reminderMinutes: e.target.value === '' ? undefined : Number(e.target.value) }))} style={{ width: 100 }} placeholder="Remind (min)" />
                   <select disabled={busy} value={(editingValues.priority as TaskPriority | undefined) || 'medium'} onChange={e => setEditingValues(v => ({ ...v, priority: e.target.value as TaskPriority }))}>
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
